@@ -108,6 +108,7 @@ struct CommentsView: View {
                                         .frame(maxHeight: 100)
                                         .clipped()
                                         .cornerRadius(10)
+                                        .contentShape(RoundedRectangle(cornerRadius: 10))
                                         .onTapGesture {
                                             presentImageItem = picUrls[i]
                                         }

@@ -892,8 +892,6 @@ struct VideoDetailView: View {
                 .padding(.horizontal, 40)
                 .padding(.vertical, 0)
                 .opacity(0.65)
-            Spacer()
-                .frame(height: 20)
         }
     }
     @ViewBuilder var watchDetailSecondPage: some View {

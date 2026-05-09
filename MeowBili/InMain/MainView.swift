@@ -111,7 +111,7 @@ struct MainView: View {
             }
             .sheet(isPresented: $isNewUserPresenting, content: { LoginView() })
             .onAppear {
-                if username == "" {
+                if username == "" && dedeUserID != "" {
                     Task {
                         if let info = await BiliAPI.shared.userInfo() {
                             username = info.name

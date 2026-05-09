@@ -213,7 +213,7 @@ struct PersonAccountView: View {
         .sheet(isPresented: $isNetworkFixPresented, content: { NetworkFixView() })
     }
     func getAccountInfo() {
-        if username == "" {
+        if username == "" && sessdata != "" {
             Task {
                 if let info = await BiliAPI.shared.userInfo() {
                     username = info.name

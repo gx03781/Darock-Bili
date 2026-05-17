@@ -1,4 +1,3 @@
-#仅个人打包使用
 name: Build IPA on Windows Request
 
 on:
@@ -6,38 +5,53 @@ on:
 
 jobs:
   build:
+    # 升级到 macos-14，并且我们下面会使用内置最新的 Xcode 15.4 或更高版本
     runs-on: macos-14
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Xcode
-        run: sudo xcode-select -s /Applications/Xcode_15.0.1.app
-
-      - name: Find and Build Project
+      - name: Set up Newest Xcode
         run: |
-          # 自动在仓库里寻找 .xcodeproj 文件的实际路径
-          PROJECT_PATH=$(find . -name "*.xcodeproj" | head -n 1)
-          if [ -z "$PROJECT_PATH" ]; then
-            echo "错误：未找到任何 Xcode 项目文件！"
-            exit 1
+          # 自动寻找并切换到云端服务器里最新的 Xcode 15 版本（比如 15.4）
+          LATEST_XCODE=$(find /Applications -name "Xcode_15*.app" | sort -V | tail -n 1)
+          if [ -z "$LATEST_XCODE" ]; then
+            LATEST_XCODE="/Applications/Xcode.app"
           fi
+          echo "切换至最新 Xcode 环境: $LATEST_XCODE"
+          sudo xcode-select -s "$LATEST_XCODE/Contents/Developer"
+
+      - name: Find and Clean Package Dependencies
+        run: |
+          # 自动清除可能导致冲突的旧缓存文件，并强制重新解析第三方包
+          PROJECT_PATH=$(find . -name "*.xcodeproj" | head -n 1)
+          PROJECT_DIR=$(dirname "$PROJECT_PATH")
+          cd "$PROJECT_DIR"
+          
+          echo "清理旧的依赖缓存..."
+          rm -rf ./**/xcshareddata/swiftpm/Package.resolved
+          
+          # 强制让新版 Xcode 在线拉取并重新生成正确的包依赖
+          xcodebuild -resolvePackageDependencies -project "$(basename "$PROJECT_PATH")"
+
+      - name: Build for iOS/Watch
+        run: |
+          PROJECT_PATH=$(find . -name "*.xcodeproj" | head -n 1)
           PROJECT_DIR=$(dirname "$PROJECT_PATH")
           PROJECT_NAME=$(basename "$PROJECT_PATH")
-          echo "寻找到项目文件: $PROJECT_PATH, 切换至目录: $PROJECT_DIR"
           
           cd "$PROJECT_DIR"
           
-          # 执行编译，自动获取正确的 Scheme
+          # 自动获取正确的 Scheme
           SCHEME_NAME=$(xcodebuild -list -json | plutil -extract convert json - -o - | jq -r '.project.schemes[0]' 2>/dev/null || echo "Darock-Bili")
-          echo "使用 Scheme: $SCHEME_NAME"
+          echo "开始编译 Scheme: $SCHEME_NAME"
           
-          xcodebuild clean build -project "$PROJECT_NAME" -scheme "$SCHEME_NAME" -configuration Release CODE_SIGNING_ALLOWED=NO
+          # 增加 -disableAutomaticPackageResolution 参数防止它反复卡住
+          xcodebuild clean build -project "$PROJECT_NAME" -scheme "$SCHEME_NAME" -configuration Release CODE_SIGNING_ALLOWED=NO -disableAutomaticPackageResolution
 
       - name: Package into IPA
         run: |
           mkdir -p Payload
-          # 智能兼容 DerivedData 路径提取编译产物
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "*.app" -type d | grep -v "Watch" 2>/dev/null | head -n 1)
           if [ -z "$APP_PATH" ]; then
             APP_PATH=$(find . -name "*.app" -type d | head -n 1)

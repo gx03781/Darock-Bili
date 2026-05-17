@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-13 # 让 GitHub 免费提供一台 Mac 服务器帮你编译
+    runs-on: macos-latest # 让 GitHub 免费提供一台 Mac 服务器帮你编译
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

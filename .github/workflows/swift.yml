@@ -1,0 +1,33 @@
+#仅个人打包使用
+name: Build IPA on Windows Request
+
+on:
+  workflow_dispatch: # 允许你手动点击按钮触发编译
+
+jobs:
+  build:
+    runs-on: macos-13 # 让 GitHub 免费提供一台 Mac 服务器帮你编译
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.0.app # 确保支持 Swift 5.9
+
+      - name: Build for iOS/Watch
+        run: |
+          # 自动生成一个未签名的普通 App 包
+          xcodebuild clean build -project Darock-Bili.xcodeproj -scheme "Darock-Bili" -configuration Release CODE_SIGNING_ALLOWED=NO
+
+      - name: Package into IPA
+        run: |
+          mkdir -p Payload
+          # 找到刚才编译出来的 .app 并塞进 Payload 文件夹
+          cp -r build/Release-iphoneos/*.app Payload/ 2>/dev/null || cp -r ~/Library/Developer/Xcode/DerivedData/*/Build/Products/Release-iphoneos/*.app Payload/
+          zip -r Darock-Bili.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/artifacts@v4
+        with:
+          name: Darock-Bili-Unsigned-IPA
+          path: Darock-Bili.ipa

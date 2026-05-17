@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     # 升级到 macos-14，并且我们下面会使用内置最新的 Xcode 15.4 或更高版本
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

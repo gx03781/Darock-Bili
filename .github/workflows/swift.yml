@@ -5,33 +5,28 @@ on:
 
 jobs:
   build:
-    # 升级到 macos-14，并且我们下面会使用内置最新的 Xcode 15.4 或更高版本
-    runs-on: macos-26
+    runs-on: macos-15
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Newest Xcode
+      - name: Set up Xcode 16 (Swift 6.0)
         run: |
-          # 自动寻找并切换到云端服务器里最新的 Xcode 15 版本（比如 15.4）
-          LATEST_XCODE=$(find /Applications -name "Xcode_15*.app" | sort -V | tail -n 1)
+          LATEST_XCODE=$(find /Applications -name "Xcode_16*.app" | sort -V | tail -n 1)
           if [ -z "$LATEST_XCODE" ]; then
             LATEST_XCODE="/Applications/Xcode.app"
           fi
-          echo "切换至最新 Xcode 环境: $LATEST_XCODE"
+          echo "使用环境: $LATEST_XCODE"
           sudo xcode-select -s "$LATEST_XCODE/Contents/Developer"
 
       - name: Find and Clean Package Dependencies
         run: |
-          # 自动清除可能导致冲突的旧缓存文件，并强制重新解析第三方包
           PROJECT_PATH=$(find . -name "*.xcodeproj" | head -n 1)
           PROJECT_DIR=$(dirname "$PROJECT_PATH")
           cd "$PROJECT_DIR"
           
-          echo "清理旧的依赖缓存..."
+          echo "清理旧依赖锁..."
           rm -rf ./**/xcshareddata/swiftpm/Package.resolved
-          
-          # 强制让新版 Xcode 在线拉取并重新生成正确的包依赖
           xcodebuild -resolvePackageDependencies -project "$(basename "$PROJECT_PATH")"
 
       - name: Build for iOS/Watch
@@ -42,19 +37,19 @@ jobs:
           
           cd "$PROJECT_DIR"
           
-          # 自动获取正确的 Scheme
-          SCHEME_NAME=$(xcodebuild -list -json | plutil -extract convert json - -o - | jq -r '.project.schemes[0]' 2>/dev/null || echo "Darock-Bili")
-          echo "开始编译 Scheme: $SCHEME_NAME"
-          
-          # 增加 -disableAutomaticPackageResolution 参数防止它反复卡住
-          xcodebuild clean build -project "$PROJECT_NAME" -scheme "$SCHEME_NAME" -configuration Release CODE_SIGNING_ALLOWED=NO -disableAutomaticPackageResolution
+          echo "=== 正在使用精准 Scheme [MeowBili] 进行编译 ==="
+          xcodebuild clean build -project "$PROJECT_NAME" -scheme "MeowBili" -configuration Release CODE_SIGNING_ALLOWED=NO -disableAutomaticPackageResolution
 
       - name: Package into IPA
         run: |
           mkdir -p Payload
-          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "*.app" -type d | grep -v "Watch" 2>/dev/null | head -n 1)
+          # 提取编译生成的手机端主 App 壳
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "MeowBili.app" -type d 2>/dev/null | head -n 1)
           if [ -z "$APP_PATH" ]; then
-            APP_PATH=$(find . -name "*.app" -type d | head -n 1)
+            APP_PATH=$(find . -name "MeowBili.app" -type d | head -n 1)
+          fi
+          if [ -z "$APP_PATH" ]; then
+            APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "*.app" -type d | grep -v -i "xctest" 2>/dev/null | head -n 1)
           fi
           
           if [ -z "$APP_PATH" ]; then
